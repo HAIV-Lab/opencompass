@@ -23,9 +23,9 @@ models=[
             tp=1),
         gen_config=dict(
             # max_new_tokens=4096,
-            temperature=0.7,
+            temperature=0.6,
             top_k=20,
-            top_p=0.8,
+            top_p=0.95,
             do_sample=True, 
             enable_thinking=True
             ),
