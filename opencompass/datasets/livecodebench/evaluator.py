@@ -19,6 +19,20 @@ from .livecodebench import LCBCodeGenerationDataset
 from .pass_k_utils import compute_metrics_from_results
 
 
+def _temp_run_worker(sample, generation, debug, result, metadata_list, timeout):
+    """Worker function for codegen_check_correctness subprocess."""
+    from opencompass.datasets.livecodebench.testing_util import (
+        RuntimeModule, run_test)
+    # ⭐ 确保 RuntimeModule 在子进程中可用
+    assert RuntimeModule is not None, 'RuntimeModule is None in subprocess!'
+    res, metadata = run_test(sample,
+                             test=generation,
+                             debug=debug,
+                             timeout=timeout)
+    result.append(res)
+    metadata_list.append(metadata)
+
+
 def codegen_check_correctness(sample, generation, timeout, debug=True):
     """Check correctness of code generation with a global timeout.
 
@@ -26,20 +40,11 @@ def codegen_check_correctness(sample, generation, timeout, debug=True):
     timeouts inside `run_test`
     """
 
-    def _temp_run(sample, generation, debug, result, metadata_list, timeout):
-        from .testing_util import run_test
-        res, metadata = run_test(sample,
-                                 test=generation,
-                                 debug=debug,
-                                 timeout=timeout)
-        result.append(res)
-        metadata_list.append(metadata)
-
     manager = multiprocessing.Manager()
     result = manager.list()
     metadata_list = manager.list()
     p = multiprocessing.Process(
-        target=_temp_run,
+        target=_temp_run_worker,
         args=(sample, generation, debug, result, metadata_list, timeout),
     )
     p.start()
@@ -239,6 +244,10 @@ class LCBCodeGenerationEvaluator(BaseEvaluator):
                  extractor_version='v1',
                  start_date=None,
                  end_date=None):
+        # ⭐ 预导入 testing_util，确保在 fork 子进程中 RuntimeModule 可用
+        from opencompass.datasets.livecodebench import testing_util as _lcb_eval_util
+        assert _lcb_eval_util.RuntimeModule is not None, \
+            'RuntimeModule should not be None after import'
         super().__init__()
         self.num_process_evaluate = num_process_evaluate
         self.timeout = timeout

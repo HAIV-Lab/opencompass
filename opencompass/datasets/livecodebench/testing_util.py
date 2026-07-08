@@ -1,3 +1,4 @@
+# flake8: noqa
 # Copyright LiveCodeBench @ 2024,
 
 import ast
@@ -15,8 +16,52 @@ from io import StringIO
 # used for testing the code that reads from input
 from unittest.mock import mock_open, patch
 
+import types
+import typing as _typing
+
 import numpy as np
-from pyext import RuntimeModule
+
+# pyext is incompatible with Python 3.13+ (uses deprecated inspect.getargspec).
+# Use built-in types.ModuleType + exec as a drop-in replacement.
+class RuntimeModule:
+    """Drop-in replacement for pyext.RuntimeModule using built-in Python APIs."""
+
+    @staticmethod
+    def from_string(module_name: str, _unused_doc: str, code_str: str):
+        """Compile and execute code_str into a module named module_name."""
+        # Create a new module object
+        module = types.ModuleType(module_name)
+        module.__file__ = f'<{module_name}>'
+        # Inject common builtins and typing so the executed code can use them
+        module.__dict__.setdefault('__builtins__', __builtins__)
+        module.__dict__.setdefault('typing', _typing)
+        try:
+            exec(code_str, module.__dict__)
+        except Exception as e:
+            raise RuntimeError(
+                f'Failed to compile module "{module_name}": {e}') from e
+        return module
+
+
+def _runtime_module_from_string(module_name, unused_doc, code_str):
+    """Safe version of RuntimeModule.from_string that works in subprocesses."""
+    if RuntimeModule is not None:
+        return RuntimeModule.from_string(module_name, unused_doc, code_str)
+    # Fallback: RuntimeModule is None in some subprocess contexts
+    import importlib
+    import logging
+    logging.getLogger(__name__).warning(
+        f'RuntimeModule is None, using types.ModuleType fallback')
+    module = types.ModuleType(module_name)
+    module.__file__ = f'<{module_name}>'
+    module.__dict__.setdefault('__builtins__', __builtins__)
+    module.__dict__.setdefault('typing', _typing)
+    try:
+        exec(code_str, module.__dict__)
+    except Exception as e:
+        raise RuntimeError(
+            f'Failed to compile module "{module_name}": {e}') from e
+    return module
 
 
 def truncatefn(s, length=300):
@@ -120,7 +165,7 @@ def run_test(sample, test=None, debug=False, timeout=6):
                 print(f'sol = {sol}')
             signal.alarm(timeout)
             try:
-                tmp_sol = RuntimeModule.from_string('tmp_sol', '', sol)
+                tmp_sol = _runtime_module_from_string('tmp_sol', '', sol)
                 if 'class Solution' not in test:
                     tmp = tmp_sol
                 else:
@@ -185,7 +230,7 @@ def run_test(sample, test=None, debug=False, timeout=6):
             method_name = 'code'
             signal.alarm(timeout)
             try:
-                tmp_sol = RuntimeModule.from_string('tmp_sol', '', sol)
+                tmp_sol = _runtime_module_from_string('tmp_sol', '', sol)
                 tmp = tmp_sol
                 signal.alarm(0)
             except Exception as e:
@@ -653,6 +698,40 @@ def stripped_string_compare(s1, s2):
     return s1 == s2
 
 
+class MockStdinWithBuffer:
+
+    def __init__(self, inputs: str):
+        self.inputs = inputs
+        self._stringio = StringIO(inputs)
+        self.buffer = MockBuffer(inputs)
+
+    def read(self, *args):
+        return self.inputs
+
+    def readline(self, *args):
+        return self._stringio.readline(*args)
+
+    def readlines(self, *args):
+        return self.inputs.split('\n')
+
+    def __getattr__(self, name):
+        # Delegate other attributes to StringIO
+        return getattr(self._stringio, name)
+
+
+class MockBuffer:
+
+    def __init__(self, inputs: str):
+        self.inputs = inputs.encode('utf-8')  # Convert to bytes
+
+    def read(self, *args):
+        # Return as byte strings that can be split
+        return self.inputs
+
+    def readline(self, *args):
+        return self.inputs.split(b'\n')[0] + b'\n'
+
+
 def call_method(method, inputs):
 
     if isinstance(inputs, list):
@@ -660,11 +739,14 @@ def call_method(method, inputs):
 
     inputs_line_iterator = iter(inputs.split('\n'))
 
+    # Create custom stdin mock with buffer support
+    mock_stdin = MockStdinWithBuffer(inputs)
+
     # sys.setrecursionlimit(10000)
 
     # @patch('builtins.input', side_effect=inputs.split("\n"))
     @patch('builtins.open', mock_open(read_data=inputs))
-    @patch('sys.stdin', StringIO(inputs))
+    @patch('sys.stdin', mock_stdin)  # Use our custom mock instead of StringIO
     @patch('sys.stdin.readline', lambda *args: next(inputs_line_iterator))
     @patch('sys.stdin.readlines', lambda *args: inputs.split('\n'))
     @patch('sys.stdin.read', lambda *args: inputs)
