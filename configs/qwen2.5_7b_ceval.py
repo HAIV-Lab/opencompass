@@ -1,10 +1,9 @@
 from opencompass.models import OpenAISDK
-from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess
+from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess_ceval
 from opencompass.models import VLLMwithChatTemplate
 from mmengine.config import read_base
 
 with read_base():
-    
     from opencompass.configs.datasets.ceval.ceval_gen import ceval_datasets
     # from opencompass.configs.models.qwen2_5 import hf_qwen2_5_72b_instruct
 
@@ -16,13 +15,13 @@ datasets = ceval_datasets
 
 if not datasets:
     raise ValueError(
-        f'No CEval dataset matched abbr={single_subject_abbr}. '
+        f'No CEval dataset matched. '
         'Please check available subject names in ceval_gen.'
     )
 
 for _dataset in datasets:
     _dataset['eval_cfg']['pred_postprocessor'] = dict(
-        type=qwen_think_mcq_postprocess,
+        type=qwen_think_mcq_postprocess_ceval,
         options='ABCD',
     )
 

@@ -1,5 +1,5 @@
 
-from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess
+from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess_ceval
 from mmengine.config import read_base
 from opencompass.models import VLLMwithChatTemplate
 
@@ -14,7 +14,7 @@ datasets = ceval_datasets
 
 for _dataset in datasets:
     _dataset['eval_cfg']['pred_postprocessor'] = dict(
-        type=qwen_think_mcq_postprocess,
+        type=qwen_think_mcq_postprocess_ceval,
         options='ABCD',
     )
 
@@ -23,7 +23,6 @@ models = [
         type=VLLMwithChatTemplate,
         abbr='vllm_qwen3_4b_no_thinking',
         path='/kpfs/intern-legal/model/Qwen3-4B',
-        # model_kwargs=dict(tensor_parallel_size=1, gpu_memory_utilization=0.5),
         max_seq_len=32768,
         max_out_len=16384,
         batch_size=16,

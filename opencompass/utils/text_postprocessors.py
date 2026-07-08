@@ -327,6 +327,54 @@ def qwen_think_mcq_postprocess(text: str, options: str = 'ABCD') -> str:
 
     tail = search_space[-1500:]
     fallback_hits = re.findall(
+        rf'(?is)(?:answer|答案|选项|选择|故选|所以|最终|结论)\s*[^\n]{{0,80}}([{options}])\b',
+        tail,
+    )
+    if fallback_hits:
+        return fallback_hits[-1].upper()
+
+    return ''
+
+@TEXT_POSTPROCESSORS.register_module('qwen-think-mcq-ceval')
+def qwen_think_mcq_postprocess_ceval(text: str, options: str = 'ABCD')-> str:
+    """Extract multiple-choice option robustly from Qwen thinking-style outputs for CEval.
+
+    Priority order:
+    1) Content after </think> (if present)
+    2) Explicit assistant tag, e.g. <助手>:C<\助手>
+    3) Explicit final-answer cues in Chinese/English
+    4) Construct Response / Final Output style lines
+
+    Returns empty string when no reliable explicit answer marker is found.
+    """
+    print(f"========================:{text}")
+    if not isinstance(text, str) or text.strip() == '':
+        return ''
+
+    search_space = text
+
+    end_token_pos = search_space.rfind('</think>')
+    if end_token_pos != -1:
+        search_space = search_space[end_token_pos + len('</think>'):]
+
+    patterns = [
+        rf'<助手>[:：]\s*([{options}])(?:\s*<\\助手>|\b)',
+        rf'答案(?:是|为)?[:：]?\s*([{options}])\b',
+        rf'(?i)final\s+answer\s*[:：]?\s*([{options}])\b',
+        rf'(?i)the\s+answer\s+is\s*[:：]?\s*\(?([{options}])\)?\b',
+        rf'(?i)(?:the\s+answer|so\s+the\s+answer|answer)\s+would\s+be\s*[:：]?\s*\(?([{options}])\)?\b',
+        rf'(?i)final\s+decision\s*[:：]?\s*([{options}])\b',
+        rf'(?i)construct\s+response\s*[:：]?.*?<助手>[:：]\s*([{options}])',
+        rf'(?i)final\s+output\s*[:：]?\s*<助手>[:：]\s*([{options}])',
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, search_space, flags=re.DOTALL)
+        if match:
+            return match.group(1).upper()
+
+    tail = search_space[-1500:]
+    fallback_hits = re.findall(
         rf'(?is)(?:answer|答案|选项|选择|故选|所以|最终|结论)?\s*[^\n]{{0,80}}([{options}])\b',
         tail,
     )

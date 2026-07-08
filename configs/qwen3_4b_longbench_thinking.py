@@ -7,7 +7,6 @@ with read_base():
 
 datasets=LongBenchv2_datasets
 
-
 models=[
     dict(
         type=TurboMindModelwithChatTemplate,

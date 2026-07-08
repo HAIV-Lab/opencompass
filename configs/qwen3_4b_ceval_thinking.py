@@ -1,5 +1,5 @@
 
-from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess
+from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess_ceval
 from mmengine.config import read_base
 from opencompass.models import VLLMwithChatTemplate
 
@@ -14,7 +14,7 @@ datasets = ceval_datasets
 
 for _dataset in datasets:
     _dataset['eval_cfg']['pred_postprocessor'] = dict(
-        type=qwen_think_mcq_postprocess,
+        type=qwen_think_mcq_postprocess_ceval,
         options='ABCD',
     )
 
