@@ -23,16 +23,15 @@ models = [
         type=VLLMwithChatTemplate,
         abbr='vllm_qwen2.5_7b',
         path='/kpfs/intern-legal/model/Qwen2.5-7B-Instruct',
-        # model_kwargs=dict(tensor_parallel_size=1, gpu_memory_utilization=0.5),
+        model_kwargs=dict(tensor_parallel_size=1, gpu_memory_utilization=0.5),
         max_seq_len=32768,
         max_out_len=2048,
         batch_size=16,
         generation_kwargs=dict(
             temperature=0.0
         ),
-        # chat_template_kwargs=dict(enable_thinking=False),  # <-- 在这里配置 thinking
         run_cfg=dict(num_gpus=1),
     )
 ]
 
-work_dir = './results/mmlu/qwen2.5/7B'
+work_dir = './results/mmlu/qwen2.5/7B/'

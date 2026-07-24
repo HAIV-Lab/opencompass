@@ -5,7 +5,6 @@ from opencompass.utils.text_postprocessors import qwen_think_mcq_postprocess
 
 with read_base():
     from opencompass.configs.datasets.mmlu_redux.mmlu_redux_gen import mmlu_redux_datasets
-    # from opencompass.configs.models.qwen3.vllm_qwen3_8b_no_thinking import models as Qwen3_8B
 
 # single_subject_abbr = 'mmlu_redux_abstract_algebra'
 # datasets = [d for d in mmlu_redux_datasets if d.get('abbr') == single_subject_abbr]

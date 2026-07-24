@@ -98,7 +98,7 @@ DATASETS_MAPPING = {
     "opencompass/ceval-exam": {
         "ms_id": "opencompass/ceval-exam",
         "hf_id": "opencompass/ceval-exam",
-        "local": "./data/ceval/formal_ceval",
+        "local": "/kpfs/dataset/general/ceval/formal_ceval",
     },
     # AFQMC
     "opencompass/afqmc-dev": {

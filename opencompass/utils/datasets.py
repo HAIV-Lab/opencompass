@@ -50,7 +50,7 @@ def get_data_path(dataset_id: str, local_mode: bool = False):
         local_path = DATASETS_MAPPING[dataset_id]['local']
         print(f"cache_dir:{cache_dir}")
         print(f"local_path:{local_path}")
-        local_path = os.path.join(cache_dir, local_path)
+        # local_path = os.path.join(cache_dir, local_path)
         print(f"===============localpath:{local_path}=======================")
         if not os.path.exists(local_path):
             return download_dataset(local_path, cache_dir)
